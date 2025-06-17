@@ -55,22 +55,18 @@ async def play(ctx, *, search_query):
     try:
         (info, filename), url, thumbnail = await search_video(ctx, search_query)
         source = discord.FFmpegPCMAudio(filename)
+        voice_client = ctx.voice_client
 
         def after_playback(error):
             if error:
                 print(f'Player error: {error}')
-            coro = ctx.voice_client.disconnect()
-            fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
-            try:
-                fut.result()
-            except Exception as e:
-                print(f"Error disconnecting: {e}")
+            if voice_client and voice_client.is_connected():
+                bot.loop.call_soon_threadsafe(asyncio.create_task, voice_client.disconnect())
 
-        ctx.voice_client.play(source, after=after_playback)
+        voice_client.play(source, after=after_playback)
         await ctx.send(f"Now playing: {info} <{url}>")
     except Exception as e:
         await ctx.send(f"An error occurred: {str(e)}")
-
 
 @bot.command()
 async def stop(ctx):
