@@ -1,7 +1,14 @@
-It's very basic, and I don't plan on making it more complex, but it still needs some improvements regarding the queue. More testing is needed, but it works.
+A basic python script that utilizes yt-dlp to create a simple, yet very effective Discord bot.
 
-Here's how it works:
+This script runs a Discord bot that listens for youtube links, downloads their respective vidoes as an mp3 at 128K quality, then broadcasts the file to your discord server's voice channel.
 
-It's very basic, but the more complicated part was making yt-dlp not break, since it isn't asynchronous. I made it run in threads using concurrent.futures, so if you send a really big playlist (100 songs, for example), you won't need to wait until yt-dlp fetches all the videos in the playlist before you can use the !play command again. The issue is that you'll need to wait until all the videos are fetched for them to be placed in the queue. So, if you use !play when there is already a playlist being searched, if it is a single video or a small playlist, it will be sent to the queue before the big playlist is fetched. I didn't implement any ways for the task to stop while they are still being executed because I don't really need it (lol) and because it works for me the way it is.
+This bot will continue to work, as long as you keep your yt-dlp program up to date as YouTube's API changes over time.
 
-queue, actual_url, and thumb_url are used to store information about the video to send in the embed message when a song is currently playing. bot.playstatus is used to check if the bot is still in "play" mode, so the next song in the queue is played after the currently playing song ends. bot.doom is to make sure the bot stops after using !stop if there is a video or playlist being searched in the background. That's pretty much it.
+This script has the following pip dependencies:
+discord.py
+yt-dlp
+ffmpeg
+asyncio
+PyNaCl
+
+Enter your Discord bot token at the end of the script, then you're good to go.
