@@ -20,7 +20,7 @@ PyNaCl</sub>**
 3. Put your Discord bot key in the top of the script, everything else is optional to change. It really is that easy.
 
 ## Commands:
-!play <YouTube Video/Playlist Link>
-!stop
-!skip
-!queue
+!play <YouTube Video/Playlist Link><br/>
+!stop<br/>
+!skip<br/>
+!queue<br/>
