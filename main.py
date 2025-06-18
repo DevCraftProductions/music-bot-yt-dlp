@@ -1,3 +1,9 @@
+# === Configuration ===
+DISCORD_BOT_TOKEN = 'YOUR_DISCORD_BOT_TOKEN'
+AUDIO_DIR = './discordbotaudio'
+AUDIO_QUALITY = '128'  # in kbps
+COMMAND_PREFIX = '!'
+
 import discord
 from discord.ext import commands
 import yt_dlp
@@ -9,9 +15,10 @@ from concurrent.futures import ThreadPoolExecutor
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 
 executor = ThreadPoolExecutor()
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 @bot.event
 async def on_ready():
@@ -23,11 +30,12 @@ async def search_video(ctx, urlq):
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
-            'preferredquality': '128',
+            'preferredquality': AUDIO_QUALITY,
         }],
         'default_search': 'auto',
         'noplaylist': True,
-        'verbose': True
+        'verbose': True,
+        'outtmpl': os.path.join(AUDIO_DIR, '%(title)s.%(ext)s')
     }
 
     yt_search = yt_dlp.YoutubeDL(yt_opts)
@@ -38,7 +46,7 @@ async def search_video(ctx, urlq):
         data = data['entries'][0]
 
     filename = yt_search.prepare_filename(data).replace(".webm", ".mp3").replace(".m4a", ".mp3")
-    return [data['title'], filename], data['webpage_url'], data['thumbnail']
+    return data, filename
 
 @bot.command()
 async def play(ctx, *, search_query):
@@ -53,9 +61,29 @@ async def play(ctx, *, search_query):
         await ctx.voice_client.move_to(voice_channel)
 
     try:
-        (info, filename), url, thumbnail = await search_video(ctx, search_query)
-        source = discord.FFmpegPCMAudio(filename)
-        voice_client = ctx.voice_client
+        yt_opts = {
+            'quiet': True,
+            'skip_download': True,
+            'default_search': 'auto',
+            'noplaylist': True
+        }
+        yt_search = yt_dlp.YoutubeDL(yt_opts)
+        loop = asyncio.get_event_loop()
+        info = await loop.run_in_executor(executor, lambda: yt_search.extract_info(search_query, download=False))
+        if 'entries' in info:
+            info = info['entries'][0]
+        title = info['title']
+        filename = os.path.join(AUDIO_DIR, f"{title}.mp3")
+
+        if os.path.exists(filename):
+            source = discord.FFmpegPCMAudio(filename)
+            voice_client = ctx.voice_client
+        else:
+            loading_msg = await ctx.send("Now loading...")
+            info, filename = await search_video(ctx, search_query)
+            source = discord.FFmpegPCMAudio(filename)
+            voice_client = ctx.voice_client
+            await loading_msg.delete()
 
         def after_playback(error):
             if error:
@@ -64,7 +92,7 @@ async def play(ctx, *, search_query):
                 bot.loop.call_soon_threadsafe(asyncio.create_task, voice_client.disconnect())
 
         voice_client.play(source, after=after_playback)
-        await ctx.send(f"Now playing: {info} <{url}>")
+        await ctx.send(f"Now playing: {info['title']} <{info['webpage_url']}>")
     except Exception as e:
         await ctx.send(f"An error occurred: {str(e)}")
 
@@ -73,4 +101,4 @@ async def stop(ctx):
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
 
-bot.run('YOUR_DISCORD_BOT_TOKEN')
+bot.run(DISCORD_BOT_TOKEN)
